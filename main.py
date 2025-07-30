@@ -21,11 +21,15 @@ class Cell:
         return self.cell_type
 
     @property
+    def source_no_magic(self) -> str:
+        if self.source.startswith('%%'):
+            return self.source[self.source.find('\n') + 1:]
+        return self.source
+
+    @property
     def src(self) -> str:
-        source = self.source
-        if source.startswith('%%'):
-            source = source[source.find('\n') + 1:]
-        return source.replace('\n', '\\n')
+        s = self.source_no_magic.replace('\n', '\\n')
+        return s[:47] + '...' if len(s) > 50 else s
 
 
 def read_notebook(file_path: str) -> list[Cell]:
@@ -53,7 +57,7 @@ def main():
     
     cells = read_notebook(args.notebook)
     for cell in cells:
-        print(f"Cell {cell.id} ({cell.kind}): {cell.src[:50]}...")
+        print(f"Cell {cell.id} ({cell.kind}): {cell.src}")
 
 
 if __name__ == "__main__":
