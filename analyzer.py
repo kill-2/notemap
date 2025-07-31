@@ -53,11 +53,20 @@ def parse(snippets: str) -> List[IO]:
 
 
 def request(snippets: str) -> str:
-    client = OpenAI(
-        api_key=os.getenv("OPENAI_API_KEY"), base_url="https://api.deepseek.com"
-    )
+    api_key = os.getenv("NOTEMAP_DEEPSEEK") or os.getenv("NOTEMAP_KIMI_K2")
+    if os.getenv("NOTEMAP_DEEPSEEK"):
+        base_url = "https://api.deepseek.com"
+        model = "deepseek-chat"
+    elif os.getenv("NOTEMAP_KIMI_K2"):
+        base_url = "https://api.moonshot.cn/v1"
+        model = "kimi-k2-0711-preview"
+    else:
+        base_url = "https://api.deepseek.com"
+        model = "deepseek-chat"
+
+    client = OpenAI(api_key=api_key, base_url=base_url)
     response = client.chat.completions.create(
-        model="deepseek-chat",
+        model=model,
         messages=[{"role": "user", "content": f"{prompt}\n\n{snippets}"}],
         response_format={"type": "json_object"},
     )
