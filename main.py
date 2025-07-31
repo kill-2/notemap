@@ -1,7 +1,7 @@
 import argparse
 import json
+import analyzer
 from dataclasses import dataclass
-
 
 @dataclass
 class Cell:
@@ -68,7 +68,9 @@ def main():
     args = parser.parse_args()
     
     book = Book(args.notebook)
-    print(book.code_snippets())
+    snippets = book.code_snippets()
+    result = analyzer.parse(snippets)
+    print(result)
 
 
 if __name__ == "__main__":
