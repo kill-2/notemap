@@ -1,5 +1,6 @@
 import json
 from dataclasses import dataclass
+from pathlib import Path
 
 
 @dataclass
@@ -33,6 +34,7 @@ class Cell:
 
 class Book:
     def __init__(self, file_path: str):
+        self.file_path = str(Path(file_path).resolve())
         self.cells = self._read(file_path)
 
     def code_snippets(self) -> str:
