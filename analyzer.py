@@ -2,7 +2,6 @@ import os
 import json
 from dataclasses import dataclass
 from openai import OpenAI
-from typing import List
 
 prompt = """
 I will give you some code snippets, then you tell me each snippet read data from where, and write data to where, if they do read or write.
@@ -27,26 +26,26 @@ here are the snippets:
 """
 
 
-@dataclass
+@dataclass(frozen=True)
 class Data:
     kind: str
     name: str
 
 
-@dataclass
+@dataclass(frozen=True)
 class IO:
     id: str
-    read: List[Data]
-    write: List[Data]
+    read: set[Data]
+    write: set[Data]
 
 
-def parse(snippets: str) -> List[IO]:
+def parse(snippets: str) -> list[IO]:
     result = request(snippets)
     return [
         IO(
             id=res["id"],
-            read=[Data(kind=r["kind"], name=r["name"]) for r in res.get("read", [])],
-            write=[Data(kind=r["kind"], name=r["name"]) for r in res.get("write", [])],
+            read={Data(kind=r["kind"], name=r["name"]) for r in res.get("read", [])},
+            write={Data(kind=r["kind"], name=r["name"]) for r in res.get("write", [])},
         )
         for res in json.loads(result).get("rw", [])
     ]
