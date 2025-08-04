@@ -13,14 +13,18 @@ your answer should be formatted in json like this:
 "rw": [
     {
     "id": "kfgj8789",
-    "read": [{"kind": "table", "name": "abc"}],
-    "write": [{"kind": "file", "name": "xyz"}]
+    "read": [{"kind": "table", "location": "db", "name": "abc"}],
+    "write": [{"kind": "file", "location": "/dir", "name": "xyz"}]
     }
 ]
 }
 ```
 
-kind can be table, view, file
+`kind` can be table, view, file
+
+if `kind` is table or view, it must be in a database, fill the location of database into `location`, that location can be a db in memory
+
+if `kind` is file, fill the name of dir containing that file into `location`
 
 here are the snippets:
 """
@@ -29,6 +33,7 @@ here are the snippets:
 @dataclass(frozen=True)
 class Data:
     kind: str
+    location: str
     name: str
 
 
@@ -44,8 +49,8 @@ def parse(snippets: str) -> list[IO]:
     return [
         IO(
             id=res["id"],
-            read={Data(kind=r["kind"], name=r["name"]) for r in res.get("read", [])},
-            write={Data(kind=r["kind"], name=r["name"]) for r in res.get("write", [])},
+            read={Data(**r) for r in res.get("read", [])},
+            write={Data(**r) for r in res.get("write", [])},
         )
         for res in json.loads(result).get("rw", [])
     ]
