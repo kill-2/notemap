@@ -1,6 +1,7 @@
-import os
 import json
+import os
 from dataclasses import dataclass
+
 from openai import OpenAI
 
 prompt = """
@@ -35,6 +36,9 @@ class Data:
     kind: str
     location: str
     name: str
+
+    def __str__(self) -> str:
+        return f"{self.kind}:{self.location}:{self.name}"
 
 
 @dataclass(frozen=True)
