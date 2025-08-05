@@ -64,12 +64,12 @@ class Figure:
                         data_id = self._generate_id("data", f"{d}")
                         self.datas[data_id] = Data(id=data_id, desc=f"{d}")
                         self.rws.add(Relation(src=cell_id, dest=data_id))
-                self.notes.append(Note(book_id=book_id, path=relative_book_path, cell_ids=cell_ids))
+                self.notes.append(
+                    Note(book_id=book_id, path=relative_book_path, cell_ids=cell_ids)
+                )
 
     def __str__(self) -> str:
-        notes = ";".join([f"subgraph cluster_{n.book_id}" + "{" + ("->".join([cid for cid in n.cell_ids])) + ";}" for n in self.notes])
-        rels = "\n".join([f"{rw.src} -> {rw.dest};" for rw in self.rws])
-        return f"digraph G{{node [shape=Square];{notes};{rels}}}"
+        return graphviz(self)
 
     def _process_notebook(self, path) -> tuple[str, list[analyzer.IO]]:
         book = Book(path)
@@ -98,3 +98,20 @@ class Figure:
         bytes = s.encode("utf-8")
         encoded_bytes = base58.b58encode(bytes)
         return f"{prefix}_{encoded_bytes.decode('ascii')}"
+
+
+def graphviz(f: Figure) -> str:
+    newline = "\n  "
+
+    def subgraph(n: Note) -> str:
+        seq = "->".join([cid for cid in n.cell_ids])
+        return f"subgraph cluster_{n.book_id}{{ {seq} }}"
+
+    def desc(d: Data) -> str:
+        return f'{d.id}[label="{d.desc}"]'
+
+    descs = newline.join(["// description"] + [desc(d) for _, d in f.datas.items()])
+    notes = newline.join(["// notes"] + [subgraph(n) for n in f.notes])
+    rels = newline.join(["// relations"] + [f"{rw.src} -> {rw.dest}" for rw in f.rws])
+
+    return f"digraph G {{{newline}node[shape=Square]{newline}{descs}{newline}{notes}{newline}{rels}\n}}"
