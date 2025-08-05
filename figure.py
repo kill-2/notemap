@@ -10,12 +10,22 @@ from book import Book
 
 
 @dataclass(frozen=True)
-class Node:
+class Note:
+    book_id: str
+    path: str
+    cell_ids: list[str]
+
+
+@dataclass(frozen=True)
+class Cell:
     id: str
     desc: str
 
-    def __str__(self) -> str:
-        return f"{self.id}: {self.desc}"
+
+@dataclass(frozen=True)
+class Data:
+    id: str
+    desc: str
 
 
 @dataclass(frozen=True)
@@ -30,36 +40,36 @@ class Relation:
 class Figure:
     def __init__(self, path: str):
         self.root = self._root(path)
-        self.nodes = set()
-        self.relations = set()
+
+        self.notes = []
+        self.cells = {}
+        self.datas = {}
+        self.rws = set()
 
         with ThreadPoolExecutor() as executor:
             results = executor.map(self._process_notebook, self._find_books(path))
             for book_path, ios in results:
                 relative_book_path = book_path.replace(self.root, "").lstrip("/")
                 book_id = self._generate_id("book", relative_book_path)
-                print(book_id, relative_book_path)
+                cell_ids = []
                 for io in ios:
                     cell_id = f"cell_{io.id}_{book_id}"
-                    io_node = Node(id=cell_id, desc=cell_id)
-                    self.nodes.add(io_node)
+                    cell_ids.append(cell_id)
+                    self.cells[cell_id] = Cell(id=cell_id, desc=cell_id)
                     for d in io.read:
                         data_id = self._generate_id("data", f"{d}")
-                        data_node = Node(id=data_id, desc=f"{d}")
-                        self.nodes.add(data_node)
-                        rel = Relation(src=data_id, dest=cell_id)
-                        self.relations.add(rel)
+                        self.datas[data_id] = Data(id=data_id, desc=f"{d}")
+                        self.rws.add(Relation(src=data_id, dest=cell_id))
                     for d in io.write:
                         data_id = self._generate_id("data", f"{d}")
-                        data_node = Node(id=data_id, desc=f"{d}")
-                        self.nodes.add(data_node)
-                        rel = Relation(src=cell_id, dest=data_id)
-                        self.relations.add(rel)
+                        self.datas[data_id] = Data(id=data_id, desc=f"{d}")
+                        self.rws.add(Relation(src=cell_id, dest=data_id))
+                self.notes.append(Note(book_id=book_id, path=relative_book_path, cell_ids=cell_ids))
 
     def __str__(self) -> str:
-        node_list = "\n".join([f"  {n}" for n in self.nodes])
-        relation_list = "\n".join([f"  {r}" for r in self.relations])
-        return f"nodes:\n{node_list}\nrelations:\n{relation_list}"
+        notes = ";".join([f"subgraph cluster_{n.book_id}" + "{" + ("->".join([cid for cid in n.cell_ids])) + ";}" for n in self.notes])
+        rels = "\n".join([f"{rw.src} -> {rw.dest};" for rw in self.rws])
+        return f"digraph G{{node [shape=Square];{notes};{rels}}}"
 
     def _process_notebook(self, path) -> tuple[str, list[analyzer.IO]]:
         book = Book(path)
