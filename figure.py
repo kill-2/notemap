@@ -1,4 +1,5 @@
 import os
+from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
@@ -14,6 +15,13 @@ class Note:
     book_id: str
     path: str
     cell_ids: list[str]
+
+
+@dataclass(frozen=True)
+class Dir:
+    id: str
+    path: str
+    data_ids: list[str]
 
 
 @dataclass(frozen=True)
@@ -33,9 +41,6 @@ class Relation:
     src: str
     dest: str
 
-    def __str__(self) -> str:
-        return f"{self.src} -> {self.dest}"
-
 
 class Figure:
     def __init__(self, path: str):
@@ -45,6 +50,8 @@ class Figure:
         self.cells = {}
         self.datas = {}
         self.rws = set()
+
+        dirs = defaultdict(set)
 
         with ThreadPoolExecutor() as executor:
             results = executor.map(self._process_notebook, self._find_books(path))
@@ -59,14 +66,21 @@ class Figure:
                     for d in io.read:
                         data_id = self._generate_id("data", f"{d}")
                         self.datas[data_id] = Data(id=data_id, desc=f"{d}")
+                        dirs[d.location].add(data_id)
                         self.rws.add(Relation(src=data_id, dest=cell_id))
                     for d in io.write:
                         data_id = self._generate_id("data", f"{d}")
                         self.datas[data_id] = Data(id=data_id, desc=f"{d}")
+                        dirs[d.location].add(data_id)
                         self.rws.add(Relation(src=cell_id, dest=data_id))
                 self.notes.append(
                     Note(book_id=book_id, path=relative_book_path, cell_ids=cell_ids)
                 )
+
+        self.dirs = [
+            Dir(id=self._generate_id("dir_", loc), path=loc, data_ids=list(ids))
+            for loc, ids in dirs.items()
+        ]
 
     def __str__(self) -> str:
         return graphviz(self)
@@ -103,15 +117,20 @@ class Figure:
 def graphviz(f: Figure) -> str:
     newline = "\n  "
 
-    def subgraph(n: Note) -> str:
-        seq = "->".join([cid for cid in n.cell_ids])
-        return f"subgraph cluster_{n.book_id}{{ {seq} }}"
+    def note_subgraph(n: Note) -> str:
+        seq = "->".join(n.cell_ids)
+        return f'subgraph cluster_{n.book_id}{{ label="{n.path}"; {seq} }}'
+
+    def dir_subgraph(dir: Dir) -> str:
+        seq = "->".join(dir.data_ids)
+        return f'subgraph cluster_{dir.id}{{ label="{dir.path}"; edge[style="invis"]; {seq} }}'
 
     def desc(d: Data) -> str:
         return f'{d.id}[label="{d.desc}"]'
 
     descs = newline.join(["// description"] + [desc(d) for _, d in f.datas.items()])
-    notes = newline.join(["// notes"] + [subgraph(n) for n in f.notes])
+    notes = newline.join(["// notes"] + [note_subgraph(n) for n in f.notes])
+    dirs = newline.join(["// dirs"] + [dir_subgraph(dir) for dir in f.dirs])
     rels = newline.join(["// relations"] + [f"{rw.src} -> {rw.dest}" for rw in f.rws])
 
-    return f"digraph G {{{newline}node[shape=Square]{newline}{descs}{newline}{notes}{newline}{rels}\n}}"
+    return f"digraph G {{{newline}node[shape=Square]{newline}{descs}{newline}{notes}{newline}{dirs}{newline}{rels}\n}}"
