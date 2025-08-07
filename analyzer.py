@@ -47,6 +47,12 @@ class IO:
     read: set[Data]
     write: set[Data]
 
+    def read_list(self) -> list[Data]:
+        return sorted(list(self.read), key=str)
+
+    def write_list(self) -> list[Data]:
+        return sorted(list(self.write), key=str)
+
 
 def parse(snippets: str) -> list[IO]:
     result = request(snippets)
@@ -61,13 +67,22 @@ def parse(snippets: str) -> list[IO]:
 
 
 def request(snippets: str) -> str:
-    api_key = os.getenv("NOTEMAP_DEEPSEEK") or os.getenv("NOTEMAP_KIMI_K2")
+    api_key = os.getenv("NOTEMAP_DEEPSEEK") or os.getenv("NOTEMAP_KIMI_K2") or os.getenv("NOTEMAP_OPENROUTER_DEEPSEEK_CHAT_V3_0324_FREE") or os.getenv("NOTEMAP_OPENROUTER_KIMI_K2_FREE") or os.getenv("NOTEMAP_OPENROUTER_QWEN3_235B_A22B_FREE")
     if os.getenv("NOTEMAP_DEEPSEEK"):
         base_url = "https://api.deepseek.com"
         model = "deepseek-chat"
     elif os.getenv("NOTEMAP_KIMI_K2"):
         base_url = "https://api.moonshot.cn/v1"
         model = "kimi-k2-0711-preview"
+    elif os.getenv("NOTEMAP_OPENROUTER_DEEPSEEK_CHAT_V3_0324_FREE"):
+        base_url = "https://openrouter.ai/api/v1"
+        model = "deepseek/deepseek-chat-v3-0324:free"
+    elif os.getenv("NOTEMAP_OPENROUTER_KIMI_K2_FREE"):
+        base_url = "https://openrouter.ai/api/v1"
+        model = "moonshotai/kimi-k2:free"
+    elif os.getenv("NOTEMAP_OPENROUTER_QWEN3_235B_A22B_FREE"):
+        base_url = "https://openrouter.ai/api/v1"
+        model = "qwen/qwen3-235b-a22b:free"
     else:
         base_url = "https://api.deepseek.com"
         model = "deepseek-chat"

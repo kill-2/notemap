@@ -41,6 +41,9 @@ class Relation:
     src: str
     dest: str
 
+    def __str__(self) -> str:
+        return f"{self.src}->{self.dest}"
+
 
 class Figure:
     def __init__(self, path: str):
@@ -63,12 +66,12 @@ class Figure:
                     cell_id = f"cell_{io.id}_{book_id}"
                     cell_ids.append(cell_id)
                     self.cells[cell_id] = Cell(id=cell_id, desc=cell_id)
-                    for d in io.read:
+                    for d in io.read_list():
                         data_id = self._generate_id("data", f"{d}")
                         self.datas[data_id] = Data(id=data_id, desc=f"{d}")
                         dirs[d.location].add(data_id)
                         self.rws.add(Relation(src=data_id, dest=cell_id))
-                    for d in io.write:
+                    for d in io.write_list():
                         data_id = self._generate_id("data", f"{d}")
                         self.datas[data_id] = Data(id=data_id, desc=f"{d}")
                         dirs[d.location].add(data_id)
@@ -78,7 +81,7 @@ class Figure:
                 )
 
         self.dirs = [
-            Dir(id=self._generate_id("dir_", loc), path=loc, data_ids=list(ids))
+            Dir(id=self._generate_id("dir_", loc), path=loc, data_ids=sorted(list(ids)))
             for loc, ids in dirs.items()
         ]
 
@@ -131,6 +134,6 @@ def graphviz(f: Figure) -> str:
     descs = newline.join(["// description"] + [desc(d) for _, d in f.datas.items()])
     notes = newline.join(["// notes"] + [note_subgraph(n) for n in f.notes])
     dirs = newline.join(["// dirs"] + [dir_subgraph(dir) for dir in f.dirs])
-    rels = newline.join(["// relations"] + [f"{rw.src} -> {rw.dest}" for rw in f.rws])
+    rels = newline.join(["// relations"] + [f"{rw.src} -> {rw.dest}" for rw in sorted(list(f.rws), key=str)])
 
     return f"digraph G {{{newline}node[shape=Square]{newline}{descs}{newline}{notes}{newline}{dirs}{newline}{rels}\n}}"
